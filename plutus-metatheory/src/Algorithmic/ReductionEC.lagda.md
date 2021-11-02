@@ -421,10 +421,10 @@ lemΛE : ∀{K}{B : ∅ ,⋆ K ⊢Nf⋆ *}
   → Λ L ≅ E [ L' ]ᴱ
   → E ≅ EC.[] {A = Y} × Λ L ≅ L'
 lemΛE x [] x₁ = refl ,, x₁
-lemΛE x (E l· x₂) x₁ = ⊥-elim {!lem-Λ· x₁!}
-lemΛE x (x₂ ·r E) x₁ = ⊥-elim {!lem-Λ· x₁!}
+lemΛE x (E l· x₂) x₁ = ⊥-elim (lem-Λ· x₁)
+lemΛE x (x₂ ·r E) x₁ = ⊥-elim (lem-Λ· x₁)
 lemΛE x (E ·⋆ A) x₁ = ⊥-elim (lem-Λ·⋆ x₁)
-lemΛE x (unwrap E) x₁ = ⊥-elim {! lem-unwrapΛ x₁ !}
+lemΛE x (unwrap E) x₁ = ⊥-elim (lem-Λunwrap x₁)
 
 _[_]ᶠ : ∀{A B : ∅ ⊢Nf⋆ *} → Frame B A → ∅ ⊢ A → ∅ ⊢ B
 (-· M') [ L ]ᶠ = L · M'
@@ -1276,6 +1276,17 @@ lemBAppβ⋆ (step⋆ p x y z)
   with lem-·⋆' (htrans (hsym (≡-subst-removable (∅ ⊢_) y _)) (≡-to-≅ z))
 lemBAppβ⋆ (step⋆ _ (step⋆ p x q x₁) refl z) | refl ,, refl ,, refl ,, refl = ⊥-elim (lem-Λ·⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₁)))
 
+lemBAppunwrap : ∀{b}{az as}{p : az <>> as ∈ arity b}
+  → ∀{K}{A : ∅ ⊢Nf⋆ (K ⇒ *) ⇒ K ⇒ *}{B : ∅ ⊢Nf⋆ K}{M}
+  → ¬ (BApp b p (unwrap {A = A}{B = B} M))
+lemBAppunwrap {M = M} (step⋆ p x q x₁) = lem-·⋆unwrap (htrans (hsym (≡-to-≅ x₁)) (≡-subst-removable (∅ ⊢_) q (unwrap M)))
+
+lemBAppwrap : ∀{b}{az as}{p : az <>> as ∈ arity b}
+  → ∀{K}{A : ∅ ⊢Nf⋆ (K ⇒ *) ⇒ K ⇒ *}{B : ∅ ⊢Nf⋆ K}{M}
+  → ¬ (BApp b p (wrap A B M))
+lemBAppwrap {M = M} (step⋆ p x q x₁) = lem-·⋆wrap (htrans (hsym (≡-to-≅ x₁)) (≡-subst-removable (∅ ⊢_) q (wrap _ _ M)))
+
+
 lemVβ : ∀{A B}{M : ∅ , A ⊢ B}{M'} → ¬ (Value (ƛ M · M'))
 lemVβ (V-I⇒ b p q x) = lemBAppβ x
 lemVβ (V-IΠ b p q x) = lemBAppβ x
@@ -1301,16 +1312,16 @@ lemVE M (E ·⋆ A) (V-IΠ b .(bubble p) q (step⋆ p x y z))
   with lem-·⋆' (htrans (hsym (≡-subst-removable (∅ ⊢_) y _)) (≡-to-≅ z))
 ... | refl ,, refl ,, refl ,, refl = lemVE _ E (V-IΠ b p refl x)
 lemVE M (wrap E) (V-wrap V) = lemVE _ E V
-lemVE M (unwrap E) (V-I⇒ b p q x) = {!!}
-lemVE M (unwrap E) (V-IΠ b p q x) = {!!}
-lemVE M (E l· x)
-  (V-I⇒ b {as = as :< .Type} (bubble p) refl (step⋆ .p x₁ q x₂)) = {!!}
-lemVE M (E l· x)
-  (V-IΠ b {as = as :< .Type} (bubble p) refl (step⋆ .p x₁ q x₂)) = {!!}
-lemVE M (x ·r E)
-  (V-I⇒ b {as = as :< .Type} (bubble p) refl (step⋆ .p x₁ q x₂)) = {!!}
-lemVE M (x ·r E)
-  (V-IΠ b {as = as :< .Type} (bubble p) refl (step⋆ .p x₁ q x₂)) = {!!}
+lemVE M (unwrap E) (V-I⇒ b p q x) = ⊥-elim (lemBAppunwrap x)
+lemVE M (unwrap E) (V-IΠ b p q x) = ⊥-elim (lemBAppunwrap x)
+lemVE M (E l· x) (V-I⇒ b (bubble p) refl (step⋆ .p x₁ q x₂)) =
+    ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₂)))
+lemVE M (E l· x) (V-IΠ b (bubble p) refl (step⋆ .p x₁ q x₂)) =
+  ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₂)))
+lemVE M (x ·r E) (V-I⇒ b (bubble p) refl (step⋆ .p x₁ q x₂)) =
+  ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₂)))
+lemVE M (x ·r E) (V-IΠ b (bubble p) refl (step⋆ .p x₁ q x₂)) =
+  ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₂)))
 
 lemBE : ∀{A B} M (E : EC A B){as a az b}{p : az <>> (a ∷ as) ∈ arity b}
   → BApp b p (E [ M ]ᴱ) → Value M
@@ -1320,13 +1331,15 @@ lemBE M [] {a = Type} q with bappTypeLem _ M _ q
 ... | _ ,, _ ,, refl = V-IΠ _ _ refl q
 lemBE M (E l· x) (step p q x₁) = lemBE _ E q
 lemBE M (x ·r E) (step p q x₁) = lemVE _ E x₁
-lemBE M (E ·⋆ A) (step⋆ p q x y) = {!!} -- lemBE _ E q
-lemBE M (wrap E) x = {!!}
-lemBE M (unwrap E) x = {!!}
-lemBE M (E l· x) {az = az :< .Type} {p = bubble p}
-  (step⋆ .p x₁ q x₂) = {!!}
-lemBE M (x ·r E) {az = az :< .Type} {p = bubble p}
-  (step⋆ .p x₁ q x₂) = {!!}
+lemBE M (E ·⋆ A) (step⋆ p q x y)
+  with lem-·⋆' (htrans (hsym (≡-subst-removable (∅ ⊢_) x _)) (≡-to-≅ y))
+... | refl ,, refl ,, refl ,, refl = lemBE _ E q
+lemBE M (wrap E) x = ⊥-elim (lemBAppwrap x)
+lemBE M (unwrap E) x = ⊥-elim (lemBAppunwrap x)
+lemBE M (E l· x) (step⋆ p x₁ q x₂) =
+  ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₂)))
+lemBE M (x ·r E) (step⋆ p x₁ q x₂) =
+  ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₂)))
 
 subst-l· : ∀{A B C C'}(E : EC (A ⇒ B) C)(M' : ∅ ⊢ A)(p : C ≡ C')
   → substEq (EC B) p (E l· M') ≡ substEq (EC (A ⇒ B)) p E l· M'
@@ -1365,16 +1378,15 @@ with uniqueBApp' t p₁ p x bt
 ... | refl ,, refl ,, () ,, refl
 -}
 
-{-
 bapperr : ∀{A}{L : ∅ ⊢ A}{b az as}{p : az <>> as ∈ arity b}
   → Error L → BApp b p L → ⊥
 bapperr () base
 bapperr () (step p bs x)
-bapperr () (step⋆ p bs)
+bapperr e (step⋆ p bs x y) = {!!}
 
 valerr : ∀{A}{L : ∅ ⊢ A} → Error L → Value L → ⊥
-valerr E-error (V-I⇒ b p x) = bapperr E-error x
-valerr E-error (V-IΠ b p x) = bapperr E-error x
+valerr E-error (V-I⇒ b p x y) = bapperr E-error y
+valerr E-error (V-IΠ b p x y) = bapperr E-error y
 
 errred : ∀{A}{L N : ∅ ⊢ A} → Error L → L —→⋆ N → ⊥
 errred E-error ()
@@ -1400,7 +1412,7 @@ determinism⋆ (β-wrap _)                 (β-wrap _) = refl
 determinism⋆ (β-sbuiltin b t p bt u vu) (β-sbuiltin b' .t p' bt' .u vu') =
   BUILTIN-eq _ (bubble p) (bubble p') (step p bt vu) (step p' bt' vu')
 determinism⋆ (β-sbuiltin⋆ b t p bt A)   (β-sbuiltin⋆ b' .t p' bt' .A) =
-  BUILTIN-eq _ (bubble p) (bubble p') (step⋆ p bt) (step⋆ p' bt')
+  BUILTIN-eq _ (bubble p) (bubble p') (step⋆ p bt {!!} {!!}) (step⋆ p' bt' {!!} {!!})
 
 data Redex {A : ∅ ⊢Nf⋆ *} : ∅ ⊢ A → Set where
   β   : {L N : ∅ ⊢ A} → L —→⋆ N → Redex L
@@ -1429,7 +1441,7 @@ data RProgress {A : ∅ ⊢Nf⋆ *} (M : ∅ ⊢ A) : Set where
       Value M
       -----------
     → RProgress M
-
+{-
 -- a beta⋆ reduction happened
 U·⋆1 : ∀{A : ∅ ⊢Nf⋆ K}{B}{L : ∅ ,⋆ K ⊢ B}{X}
  {B' : ∅ ⊢Nf⋆ *}
@@ -1446,10 +1458,11 @@ U·⋆1 : ∀{A : ∅ ⊢Nf⋆ K}{B}{L : ∅ ,⋆ K ⊢ B}{X}
    p [] 
    ≅ E'
    × substEq (_⊢_ ∅) p (Λ L ·⋆ A) ≅ L')
-U·⋆1 eq [] refl q = refl ,, refl ,, refl
+U·⋆1 eq [] X q = ? -- refl ,, refl ,, refl
 U·⋆1 eq (E' ·⋆ A) p q with lem-·⋆' p
-... | X ,, refl ,, refl with lemΛE refl E' X
-U·⋆1 eq (.[] ·⋆ A) p (β ()) | X ,, refl ,, refl | refl ,, refl
+... | X ,, Y ,, Y' ,, Y'' with lemΛE refl E' ?
+... | X1 ,, X2 = ?
+---U·⋆1 eq (.[] ·⋆ A) p (β ()) | X ,, refl ,, refl | refl ,, refl
 
 -- M is not a value, it has made a step
 U·⋆2 : ∀{K}{C}{A : ∅ ⊢Nf⋆ K}{B : ∅ ,⋆ K ⊢Nf⋆ *}{M : ∅ ⊢ Π B}{E : EC (Π B) C}{L : ∅ ⊢ C}{X}
@@ -1473,11 +1486,12 @@ U·⋆2 : ∀{K}{C}{A : ∅ ⊢Nf⋆ K}{B : ∅ ,⋆ K ⊢Nf⋆ *}{M : ∅ ⊢ �
    p₁ (E EC.·⋆ A)
    ≅ E'
    × substEq (_⊢_ ∅) p₁ L ≅ L')
-U·⋆2 ¬VM eq [] refl (β β-Λ) U = ⊥-elim (¬VM (V-Λ _))
-U·⋆2 ¬VM eq [] refl (β (β-sbuiltin⋆ b _ p bt _)) U = ⊥-elim (¬VM (V-IΠ b p bt))
-U·⋆2 ¬VM eq (E ·⋆ A) refl q U with U E refl q
+U·⋆2 ¬VM eq [] X (β β-Λ) U = ? -- ⊥-elim (¬VM (V-Λ _))
+U·⋆2 ¬VM eq [] X (β (β-sbuiltin⋆ b _ p bt _)) U = ? -- ⊥-elim (¬VM (V-IΠ b p bt))
+{-
+U·⋆2 ¬VM eq (E ·⋆ A) X q U with U E refl q
 ... | refl ,, refl ,, refl = refl ,, refl ,, refl
-
+-}
 -- BUILTIN
 U·⋆3 : ∀{K}{A : ∅ ⊢Nf⋆ K}{B}{M : ∅ ⊢ Π B}{B' : ∅ ⊢Nf⋆ *}{X}
       → X ≡ B [ A ]Nf →
@@ -1493,8 +1507,8 @@ U·⋆3 : ∀{K}{A : ∅ ⊢Nf⋆ K}{B}{M : ∅ ⊢ Π B}{B' : ∅ ⊢Nf⋆ *}{X
          (substEq (EC (B [ A ]Nf)) p₁ []
           ≅ E')
          (λ x₁ → substEq (_⊢_ ∅) p₁ (M _⊢_.·⋆ A) ≅ L'))
-U·⋆3 eq [] _ refl q = refl ,, refl ,, refl
-U·⋆3 eq (E ·⋆ A) VM refl q = ⊥-elim (valredex (lemVE _ E VM) q)
+U·⋆3 eq [] _ X q = ? -- refl ,, refl ,, refl
+U·⋆3 eq (E ·⋆ A) VM X q = ? -- ⊥-elim (valredex (lemVE _ E VM) q)
 
 -- body of wrap made a step, it's not a value
 Uwrap : ∀{A C}{B : ∅ ⊢Nf⋆ K}{M : ∅ ⊢ nf (embNf A · ƛ (μ (embNf (weakenNf A)) (` Z)) · embNf B)}{L : ∅ ⊢ C}{E}{B' : ∅ ⊢Nf⋆ *}{X}
@@ -1527,10 +1541,11 @@ Uwrap : ∀{A C}{B : ∅ ⊢Nf⋆ K}{M : ∅ ⊢ nf (embNf A · ƛ (μ (embNf (w
  ∃
  (λ (p₁ : C ≡ B') →
     substEq (EC (μ A B)) p₁ (wrap E) ≅ E' × substEq (_⊢_ ∅) p₁ L ≅ L')
-Uwrap eq [] refl (β ()) U
-Uwrap eq (wrap E') refl q U with U E' refl q
+Uwrap eq [] X (β x) U = ?
+{-
+Uwrap eq (wrap E') X q U with U E' refl q
 ... | refl ,, refl ,, refl = refl ,, refl ,, refl
-
+-}
 -- the body of the unwrap, M, is not a value and made a step
 Uunwrap1 : ∀{A C}{B : ∅ ⊢Nf⋆ K}{M : ∅ ⊢ μ A B}{L : ∅ ⊢ C}{E}{B' : ∅ ⊢Nf⋆ *}{X}
   → ¬ (Value M)
