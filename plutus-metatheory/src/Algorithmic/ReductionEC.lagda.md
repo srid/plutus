@@ -36,7 +36,7 @@ open import Builtin.Constant.Type Ctx⋆ (_⊢Nf⋆ *)
 open import Builtin.Constant.Term Ctx⋆ Kind * _⊢Nf⋆_ con
 open import Data.Maybe using (just;from-just)
 open import Data.String using (String)
-open import Relation.Binary.HeterogeneousEquality using (_≅_;≡-subst-removable;refl;≡-to-≅;≅-to-≡) renaming (sym to hsym; trans to htrans; cong to hcong)
+open import Relation.Binary.HeterogeneousEquality using (_≅_;≡-subst-removable;refl;≡-to-≅;≅-to-≡;subst-removable) renaming (sym to hsym; trans to htrans; cong to hcong)
 ```
 
 ## Values
@@ -1188,8 +1188,6 @@ subst<>>∈ : ∀{b b' as as' az az'}
   → az <>> as ∈ arity b
 subst<>>∈ p refl refl refl = p
 
-{-# INJECTIVE _⊢Nf⋆_ #-}
-
 uniqueVal : ∀{A}(M : ∅ ⊢ A)(v v' : Value M) → v ≡ v'
 
 uniqueBApp : ∀{A b as az}
@@ -1458,8 +1456,11 @@ data RProgress {A : ∅ ⊢Nf⋆ *} (M : ∅ ⊢ A) : Set where
       Value M
       -----------
     → RProgress M
-{-
+
 -- a beta⋆ reduction happened
+
+{-# INJECTIVE _⊢_ #-}
+
 U·⋆1 : ∀{A : ∅ ⊢Nf⋆ K}{B}{L : ∅ ,⋆ K ⊢ B}{X}
  {B' : ∅ ⊢Nf⋆ *}
  → X ≡ B [ A ]Nf →
@@ -1475,11 +1476,18 @@ U·⋆1 : ∀{A : ∅ ⊢Nf⋆ K}{B}{L : ∅ ,⋆ K ⊢ B}{X}
    p [] 
    ≅ E'
    × substEq (_⊢_ ∅) p (Λ L ·⋆ A) ≅ L')
-U·⋆1 eq [] X q = ? -- refl ,, refl ,, refl
-U·⋆1 eq (E' ·⋆ A) p q with lem-·⋆' p
-... | X ,, Y ,, Y' ,, Y'' with lemΛE refl E' ?
-... | X1 ,, X2 = ?
----U·⋆1 eq (.[] ·⋆ A) p (β ()) | X ,, refl ,, refl | refl ,, refl
+U·⋆1 eq [] X q = sym eq ,, htrans (≡-subst-removable (EC _) (sym eq) []) (hsym (hcong (λ A → [] {A = A}) (≡-to-≅ eq))) ,, htrans (≡-subst-removable (∅ ⊢_) (sym eq) _) X
+U·⋆1 eq (E l· x) X q = ⊥-elim (lem-··⋆ (hsym X))
+U·⋆1 eq (x ·r E) X q = ⊥-elim (lem-··⋆ (hsym X))
+U·⋆1 eq (E ·⋆ A) X q with lem-·⋆' X
+... | refl ,, refl ,, refl ,, Y
+  with lemΛE refl E (hsym Y)
+U·⋆1 {_} {A} eq (_·⋆_ {_} E A) {L' · L''} X (β x) | refl ,, refl ,, refl ,, Y | Z1 ,, Z2 = ⊥-elim (lem-Λ· Z2)
+U·⋆1 {_} {A} eq (_·⋆_ {_} E A) {L' ·⋆ A₁} X (β x) | refl ,, refl ,, refl ,, Y | Z1 ,, Z2 = ⊥-elim (lem-Λ·⋆ Z2)
+U·⋆1 {_} {A} eq (_·⋆_ {_} E A) {unwrap L'} X (β x) | refl ,, refl ,, refl ,, Y | Z1 ,, Z2 = ⊥-elim (lem-Λunwrap Z2)
+U·⋆1 {_} {A} refl (_·⋆_ {_} E A) X err | refl ,, refl ,, refl ,, Y | Z1 ,, Z2 = ⊥-elim (lem-Λerror Z2)
+U·⋆1 eq (wrap E) X q = ⊥-elim (lem-·⋆wrap X)
+U·⋆1 eq (unwrap E) X q = ⊥-elim (lem-·⋆unwrap X)
 
 -- M is not a value, it has made a step
 U·⋆2 : ∀{K}{C}{A : ∅ ⊢Nf⋆ K}{B : ∅ ,⋆ K ⊢Nf⋆ *}{M : ∅ ⊢ Π B}{E : EC (Π B) C}{L : ∅ ⊢ C}{X}
@@ -1503,12 +1511,17 @@ U·⋆2 : ∀{K}{C}{A : ∅ ⊢Nf⋆ K}{B : ∅ ,⋆ K ⊢Nf⋆ *}{M : ∅ ⊢ �
    p₁ (E EC.·⋆ A)
    ≅ E'
    × substEq (_⊢_ ∅) p₁ L ≅ L')
-U·⋆2 ¬VM eq [] X (β β-Λ) U = ? -- ⊥-elim (¬VM (V-Λ _))
-U·⋆2 ¬VM eq [] X (β (β-sbuiltin⋆ b _ p bt _)) U = ? -- ⊥-elim (¬VM (V-IΠ b p bt))
-{-
-U·⋆2 ¬VM eq (E ·⋆ A) X q U with U E refl q
+U·⋆2 ¬VM eq [] X (β β-Λ) U
+  with lem-·⋆' X
+... | refl ,, refl ,, refl ,, refl = ⊥-elim (¬VM (V-Λ _))
+U·⋆2 ¬VM eq [] X (β (β-sbuiltin⋆ b _ p bt _)) U
+  with lem-·⋆' X
+... | refl ,, refl ,, refl ,, refl = ⊥-elim (¬VM (V-IΠ b p refl bt))
+U·⋆2 ¬VM eq (E ·⋆ A) X q U
+  with lem-·⋆' X
+... | refl ,, refl ,, refl ,, refl with U E refl q
 ... | refl ,, refl ,, refl = refl ,, refl ,, refl
--}
+{-
 -- BUILTIN
 U·⋆3 : ∀{K}{A : ∅ ⊢Nf⋆ K}{B}{M : ∅ ⊢ Π B}{B' : ∅ ⊢Nf⋆ *}{X}
       → X ≡ B [ A ]Nf →

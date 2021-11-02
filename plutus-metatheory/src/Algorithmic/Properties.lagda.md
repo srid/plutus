@@ -12,7 +12,7 @@ open import Type.BetaNormal
 open import Algorithmic
 open import Type.BetaNBE.RenamingSubstitution
 
-open import Relation.Binary.HeterogeneousEquality using (_≅_;refl)
+open import Relation.Binary.HeterogeneousEquality using (_≅_;refl;≅-to-type-≡)
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Data.Product renaming (_,_ to _,,_)
 open import Data.Empty
@@ -70,6 +70,8 @@ lem-Λ·⋆ : ∀{K}{B : ∅ ,⋆ K ⊢Nf⋆ *}
   → ⊥
 lem-Λ·⋆ ()
 
+postulate lem-Λerror : ∀{K}{B : ∅ ,⋆ K ⊢Nf⋆ *}{L : ∅ ,⋆ K ⊢ B}{A : ∅ ⊢Nf⋆ *} → Λ L ≅ error {Γ = ∅} A → ⊥
+
 postulate lem-Λunwrap : ∀{K}{B : ∅ ,⋆ K ⊢Nf⋆ *}{L : ∅ ,⋆ K ⊢ B}{K'}{A'}{B' : ∅ ⊢Nf⋆ K'}{L' : ∅ ⊢ μ A' B'} → Λ L ≅ _⊢_.unwrap L' → ⊥
 
 
@@ -112,3 +114,4 @@ lemmaNf: ∀{K}{C : ∅ ,⋆ K ⊢Nf⋆ *}{K'}{A : ∅ ⊢Nf⋆ K'}{B : ∅ ,⋆
   → (∃ λ K'' → ∃ λ (B' : ∅ ,⋆ K' ,⋆ K'' ⊢Nf⋆ *) → B ≡ Π B')
   ⊎ (∃ λ K'' → ∃ λ (A' : ∅ ,⋆ K'' ⊢Nf⋆ *) → ∃ λ p → subst (∅ ⊢Nf⋆_) p A ≡  Π A' )
 -}
+-- -}
