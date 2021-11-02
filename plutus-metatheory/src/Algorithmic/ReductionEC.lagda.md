@@ -347,8 +347,6 @@ data EC : (T : ∅ ⊢Nf⋆ *) → (H : ∅ ⊢Nf⋆ *) → Set where
     → EC (μ A B) C
     → EC (nf (embNf A · ƛ (μ (embNf (weakenNf A)) (` Z)) · embNf B)) C
 
-{-# INJECTIVE EC #-}
-
 data EC' : (T : ∅ ⊢Nf⋆ *) → (H : ∅ ⊢Nf⋆ *) → Set where
   []   : {A : ∅ ⊢Nf⋆ *} → EC' A A
   _l·_ : {A B C : ∅ ⊢Nf⋆ *} → EC' (A ⇒ B) C → ∅ ⊢ A → EC' B C
@@ -1286,6 +1284,15 @@ lemBAppwrap : ∀{b}{az as}{p : az <>> as ∈ arity b}
   → ¬ (BApp b p (wrap A B M))
 lemBAppwrap {M = M} (step⋆ p x q x₁) = lem-·⋆wrap (htrans (hsym (≡-to-≅ x₁)) (≡-subst-removable (∅ ⊢_) q (wrap _ _ M)))
 
+lemBAppƛ : ∀{b}{az as}{p : az <>> as ∈ arity b}
+  → {A B : ∅ ⊢Nf⋆ *}{M : ∅ , A ⊢ B}
+  → ¬ (BApp b p (ƛ M))
+lemBAppƛ {M = M} (step⋆ p x q x₁) = ⊥-elim (lem-ƛ·⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q (ƛ M))) (≡-to-≅ x₁)))  
+
+lemBAppΛ : ∀{b}{az as}{p : az <>> as ∈ arity b}
+  → {A : ∅ ,⋆ K ⊢Nf⋆ *}{M : ∅ ,⋆ K ⊢ A}
+  → ¬ (BApp b p (Λ M))
+lemBAppΛ {M = M} (step⋆ p x q x₁) = ⊥-elim (lem-Λ·⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q (Λ M))) (≡-to-≅ x₁)))  
 
 lemVβ : ∀{A B}{M : ∅ , A ⊢ B}{M'} → ¬ (Value (ƛ M · M'))
 lemVβ (V-I⇒ b p q x) = lemBAppβ x
@@ -1367,22 +1374,26 @@ valred (V-I⇒ b₁ .(bubble p₁) refl (step p₁ x x₁)) (β-sbuiltin b t p b
 valred (V-IΠ b₁ .(bubble p₁) refl (step p₁ x x₁)) (β-sbuiltin b t p bt u vu)
   with uniqueBApp' t p₁ p x bt
 ... | refl ,, refl ,, () ,, refl
-valred (V-I⇒ b₁ .(bubble p₁) q (step⋆ p₁ x y z)) (β-sbuiltin⋆ b t p bt A) = {!!}
-{-
+valred (V-I⇒ b₁ .(bubble p₁) q (step⋆ p₁ x y z)) (β-sbuiltin⋆ b t p bt A)
+  with lem-·⋆' (htrans (hsym (≡-subst-removable (∅ ⊢_) y _)) (≡-to-≅ z))
+... | refl ,, refl ,, refl ,, refl
   with uniqueBApp' t p₁ p x bt
 ... | refl ,, refl ,, () ,, refl
--}
-valred (V-IΠ b₁ .(bubble p₁) q (step⋆ p₁ x y z)) (β-sbuiltin⋆ b t p bt A) = {!!}
-{-
-with uniqueBApp' t p₁ p x bt
+valred (V-IΠ b₁ .(bubble p₁) q (step⋆ p₁ x y z)) (β-sbuiltin⋆ b t p bt A)
+  with lem-·⋆' (htrans (hsym (≡-subst-removable (∅ ⊢_) y _)) (≡-to-≅ z))
+... | refl ,, refl ,, refl ,, refl
+  with uniqueBApp' t p₁ p x bt
 ... | refl ,, refl ,, () ,, refl
--}
-
+valred (V-I⇒ b (bubble p) refl (step⋆ .p x q x₁)) (β-sbuiltin b₁ _ p₁ bt _ vu)
+ = ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₁)))
+valred (V-IΠ b (bubble p) refl (step⋆ .p x q x₁)) (β-sbuiltin b₁ _ p₁ bt _ vu)
+ = ⊥-elim (lem-··⋆ (htrans (hsym (≡-subst-removable (∅ ⊢_) q _)) (≡-to-≅ x₁)))
+ 
 bapperr : ∀{A}{L : ∅ ⊢ A}{b az as}{p : az <>> as ∈ arity b}
   → Error L → BApp b p L → ⊥
 bapperr () base
 bapperr () (step p bs x)
-bapperr e (step⋆ p bs x y) = {!!}
+bapperr () (step⋆ p bs refl refl)
 
 valerr : ∀{A}{L : ∅ ⊢ A} → Error L → Value L → ⊥
 valerr E-error (V-I⇒ b p x y) = bapperr E-error y
@@ -1405,6 +1416,8 @@ BUILTIN-eq M p p' bv bv'
   with uniqueBApp p M bv bv'
 ... | refl = refl
 
+
+-- determinism of basic reduction steps
 determinism⋆ : ∀{A}{L N N' : ∅ ⊢ A} → L —→⋆ N → L —→⋆ N' → N ≡ N'
 determinism⋆ (β-ƛ _)                    (β-ƛ _)    = refl
 determinism⋆ β-Λ                        β-Λ        = refl
@@ -1412,7 +1425,11 @@ determinism⋆ (β-wrap _)                 (β-wrap _) = refl
 determinism⋆ (β-sbuiltin b t p bt u vu) (β-sbuiltin b' .t p' bt' .u vu') =
   BUILTIN-eq _ (bubble p) (bubble p') (step p bt vu) (step p' bt' vu')
 determinism⋆ (β-sbuiltin⋆ b t p bt A)   (β-sbuiltin⋆ b' .t p' bt' .A) =
-  BUILTIN-eq _ (bubble p) (bubble p') (step⋆ p bt {!!} {!!}) (step⋆ p' bt' {!!} {!!})
+  BUILTIN-eq _ (bubble p) (bubble p') (step⋆ p bt refl refl ) (step⋆ p' bt' refl refl)
+determinism⋆ (β-ƛ x) (β-sbuiltin b .(ƛ _) p bt _ vu) = ⊥-elim (lemBAppƛ bt)
+determinism⋆ β-Λ (β-sbuiltin⋆ b .(Λ _) p bt _) = ⊥-elim (lemBAppΛ bt)
+determinism⋆ (β-sbuiltin b .(ƛ _) p bt _ vu) (β-ƛ x) =  ⊥-elim (lemBAppƛ bt)
+determinism⋆ (β-sbuiltin⋆ b .(Λ _) p bt _) β-Λ = ⊥-elim (lemBAppΛ bt)
 
 data Redex {A : ∅ ⊢Nf⋆ *} : ∅ ⊢ A → Set where
   β   : {L N : ∅ ⊢ A} → L —→⋆ N → Redex L
