@@ -1521,7 +1521,7 @@ U·⋆2 ¬VM eq (E ·⋆ A) X q U
   with lem-·⋆' X
 ... | refl ,, refl ,, refl ,, refl with U E refl q
 ... | refl ,, refl ,, refl = refl ,, refl ,, refl
-{-
+
 -- BUILTIN
 U·⋆3 : ∀{K}{A : ∅ ⊢Nf⋆ K}{B}{M : ∅ ⊢ Π B}{B' : ∅ ⊢Nf⋆ *}{X}
       → X ≡ B [ A ]Nf →
@@ -1537,9 +1537,21 @@ U·⋆3 : ∀{K}{A : ∅ ⊢Nf⋆ K}{B}{M : ∅ ⊢ Π B}{B' : ∅ ⊢Nf⋆ *}{X
          (substEq (EC (B [ A ]Nf)) p₁ []
           ≅ E')
          (λ x₁ → substEq (_⊢_ ∅) p₁ (M _⊢_.·⋆ A) ≅ L'))
-U·⋆3 eq [] _ X q = ? -- refl ,, refl ,, refl
-U·⋆3 eq (E ·⋆ A) VM X q = ? -- ⊥-elim (valredex (lemVE _ E VM) q)
+U·⋆3 eq [] {ƛ L'} _ X q = ⊥-elim (lem-ƛ·⋆ (hsym X))
+U·⋆3 eq [] {L' · L''} _ X q = ⊥-elim (lem-··⋆ (hsym X))
+U·⋆3 eq [] {Λ L'} _ X q = ⊥-elim (lem-Λ·⋆ (hsym X))
+U·⋆3 eq [] {L' ·⋆ A} _ X q with lem-·⋆' X
+... | refl ,, refl ,, refl ,, refl = refl ,, refl ,, refl
+U·⋆3 eq [] {wrap A B L'} _ X q = ⊥-elim (lem-·⋆wrap X)
+U·⋆3 eq [] {unwrap L'} _ X q = ⊥-elim (lem-·⋆unwrap X)
+U·⋆3 eq [] {con x} _ X q = {!lem-·⋆con!}
+U·⋆3 eq [] {builtin b} _ X q = {!!}
+U·⋆3 eq [] {error _} _ X q = {!lem-·⋆error!}
+U·⋆3 eq (E ·⋆ A) VM X q with lem-·⋆' X
+... | refl ,, refl ,, refl ,, refl = ⊥-elim (valredex (lemVE _ E VM) q)
 
+
+{-
 -- body of wrap made a step, it's not a value
 Uwrap : ∀{A C}{B : ∅ ⊢Nf⋆ K}{M : ∅ ⊢ nf (embNf A · ƛ (μ (embNf (weakenNf A)) (` Z)) · embNf B)}{L : ∅ ⊢ C}{E}{B' : ∅ ⊢Nf⋆ *}{X}
  → X ≡ μ A B
