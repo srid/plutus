@@ -29,6 +29,7 @@ import UntypedPlutusCore.Evaluation.Machine.Cek qualified as Cek
 import UntypedPlutusCore.Parser qualified as UPLC (parseProgram)
 
 import Control.DeepSeq (NFData, rnf)
+import Control.Lens hiding (ix)
 import Control.Monad.Except
 import Data.Bifunctor (second)
 import Data.ByteString.Lazy qualified as BSL
@@ -114,7 +115,7 @@ typedDeBruijnNotSupportedError =
 -- | Convert an untyped program to one where the 'name' type is de Bruijn indices.
 toDeBruijn :: UplcProg ann -> IO (UPLC.Program UPLC.DeBruijn PLC.DefaultUni PLC.DefaultFun ann)
 toDeBruijn prog =
-  case runExcept @UPLC.FreeVariableError (UPLC.deBruijnProgram prog) of
+  case runExcept @UPLC.FreeVariableError $ traverseOf UPLC.progTerm UPLC.deBruijnTerm prog of
     Left e  -> errorWithoutStackTrace $ show e
     Right p -> return $ UPLC.programMapNames (\(UPLC.NamedDeBruijn _ ix) -> UPLC.DeBruijn ix) p
 
@@ -240,7 +241,7 @@ instance Show Format where
 
 data ConvertOptions   = ConvertOptions Input Format Output Format PrintMode
 data PrintOptions     = PrintOptions Input PrintMode
-data ExampleOptions   = ExampleOptions ExampleMode
+newtype ExampleOptions   = ExampleOptions ExampleMode
 data ApplyOptions     = ApplyOptions Files Format Output Format PrintMode
 
 helpText ::
@@ -311,7 +312,7 @@ type UntypedProgramDeBruijn ann = UPLC.Program UPLC.NamedDeBruijn PLC.DefaultUni
 -- with a Unique for disambiguation).  Again, we don't support typed programs.
 fromDeBruijn :: UntypedProgramDeBruijn ann -> IO (UplcProg ann)
 fromDeBruijn prog = do
-    case PLC.runQuote $ runExceptT @UPLC.FreeVariableError $ UPLC.unDeBruijnProgram prog of
+    case PLC.runQuote $ runExceptT @UPLC.FreeVariableError $ traverseOf UPLC.progTerm UPLC.unDeBruijnTerm prog of
       Left e  -> errorWithoutStackTrace $ show e
       Right p -> return p
 
@@ -335,7 +336,7 @@ loadUplcASTfromFlat flatMode inp = do
          Named    -> handleResult $ unflat input
          DeBruijn -> do
              deserialised <- handleResult $ unflat input
-             let namedProgram = UPLC.programMapNames (\(UPLC.DeBruijn ix) -> UPLC.NamedDeBruijn "v" ix) deserialised
+             let namedProgram = UPLC.programMapNames UPLC.fakeNameDeBruijn deserialised
              fromDeBruijn namedProgram
          NamedDeBruijn -> do
              deserialised <- handleResult $ unflat input
