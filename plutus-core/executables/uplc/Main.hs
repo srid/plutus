@@ -27,7 +27,6 @@ import UntypedPlutusCore.Evaluation.Machine.Cek qualified as Cek
 import Control.DeepSeq (NFData, rnf)
 import Control.Lens
 import Control.Monad.Except
-import Data.Either
 import Data.Text qualified as T
 import Options.Applicative
 import System.Exit (exitFailure)
@@ -188,7 +187,7 @@ runEval (EvalOptions inp ifmt printMode budgetMode traceMode outputMode timingMo
     case budgetM of
         SomeBudgetMode bm -> evalWithTiming term >>= handleResults term
             where
-                evaluate = Cek.runCek cekparams bm emitM . fromRight (error "input contains free variables") . runExcept @UPLC.FreeVariableError . UPLC.deBruijnTerm
+                evaluate = Cek.runCek cekparams bm emitM
                 evalWithTiming t = case timingMode of
                         NoTiming -> pure $ evaluate t
                         Timing n -> do
@@ -197,7 +196,7 @@ runEval (EvalOptions inp ifmt printMode budgetMode traceMode outputMode timingMo
                                 [a] -> pure a
                                 _   -> error "Timing evaluations returned inconsistent results"
                 handleResults t (res, budget, logs) = do
-                    case Cek.unDeBruijnResult res of
+                    case res of
                         Left err -> hPrint stderr err >> exitFailure
                         Right v  -> writeToFileOrStd outputMode (show (getPrintMethod printMode v))
                     case budgetMode of

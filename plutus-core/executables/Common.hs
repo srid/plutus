@@ -122,9 +122,9 @@ toDeBruijn prog =
 -- | Convert an untyped program to one where the 'name' type is textual names with de Bruijn indices.
 toNamedDeBruijn :: UplcProg ann -> IO (UPLC.Program UPLC.NamedDeBruijn PLC.DefaultUni PLC.DefaultFun ann)
 toNamedDeBruijn prog =
-  case runExcept @UPLC.FreeVariableError (UPLC.deBruijnProgram prog) of
+  case runExcept @UPLC.FreeVariableError $ traverseOf UPLC.progTerm UPLC.deBruijnTerm prog of
     Left e  -> errorWithoutStackTrace $ show e
-    Right p -> return $ UPLC.programMapNames (\(UPLC.NamedDeBruijn v ix) -> UPLC.NamedDeBruijn v ix) p
+    Right p -> return p
 
 
 ---------------- Printing budgets and costs ----------------
@@ -188,7 +188,7 @@ printBudgetStateTally term model (Cek.CekExTally costs) = do
         totalCost = getSpent Cek.BStartup <> totalComputeCost <> builtinCosts
         totalTime = (getCPU $ getSpent Cek.BStartup) + getCPU totalComputeCost + getCPU builtinCosts
 
-class PrintBudgetState cost where
+class Monoid cost => PrintBudgetState cost where
     printBudgetState :: UPLC.Term PLC.Name PLC.DefaultUni PLC.DefaultFun () -> CekModel -> cost -> IO ()
     -- TODO: Tidy this up.  We're passing in the term and the CEK cost model
     -- here, but we only need them in tallying mode (where we need the term so
