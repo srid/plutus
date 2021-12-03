@@ -60,17 +60,6 @@ flag developer
   manual: True
 
 library
-  c-sources:
-    cbits/hs-double-conversion.cc
-    double-conversion/src/bignum.cc
-    double-conversion/src/bignum-dtoa.cc
-    double-conversion/src/cached-powers.cc
-    double-conversion/src/diy-fp.cc
-    double-conversion/src/double-conversion.cc
-    double-conversion/src/fast-dtoa.cc
-    double-conversion/src/fixed-dtoa.cc
-    double-conversion/src/strtod.cc
-
   include-dirs:
     double-conversion/src
     include
@@ -78,9 +67,6 @@ library
   exposed-modules:
     Data.Double.Conversion.ByteString
     Data.Double.Conversion.Text
-
-  other-modules:
-    Data.Double.Conversion.FFI
 
   build-depends:
     base == 4.*,
