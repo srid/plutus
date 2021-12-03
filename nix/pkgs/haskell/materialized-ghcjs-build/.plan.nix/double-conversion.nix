@@ -64,20 +64,8 @@
           ];
         buildable = true;
         modules = [
-          "Data/Double/Conversion/FFI"
           "Data/Double/Conversion/ByteString"
           "Data/Double/Conversion/Text"
-          ];
-        cSources = [
-          "cbits/hs-double-conversion.cc"
-          "double-conversion/src/bignum.cc"
-          "double-conversion/src/bignum-dtoa.cc"
-          "double-conversion/src/cached-powers.cc"
-          "double-conversion/src/diy-fp.cc"
-          "double-conversion/src/double-conversion.cc"
-          "double-conversion/src/fast-dtoa.cc"
-          "double-conversion/src/fixed-dtoa.cc"
-          "double-conversion/src/strtod.cc"
           ];
         includeDirs = [ "double-conversion/src" "include" ];
         };
