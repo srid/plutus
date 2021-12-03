@@ -9,9 +9,6 @@ packages: plutus-benchmark
           plutus-tx
           plutus-tx-plugin
           prettyprinter-configurable
-          stubs/cardano-api-stub
-          stubs/iohk-monitoring-stub
-          stubs/plutus-ghc-stub
           word-array
           contrib/cardano-crypto-07397f
 

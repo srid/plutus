@@ -48,7 +48,7 @@ let
     inherit checkMaterialization;
     sha256map = {
       "https://github.com/Quid2/flat.git"."ee59880f47ab835dbd73bea0847dab7869fc20d8" = "1lrzknw765pz2j97nvv9ip3l1mcpf2zr4n56hwlz0rk7wq7ls4cm";
-      "https://github.com/input-output-hk/cardano-base"."592aa61d657ad5935a33bace1243abce3728b643" = "1bgq3a2wfdz24jqfwylcc6jjg5aji8dpy5gjkhpnmkkvgcr2rkyb";
+      "https://github.com/input-output-hk/cardano-base"."dac2841472c444c6fe867ce39ff00d3f9cdb3623" = "10ajqw8z23ijnw8v6j6bg8q3w01pfvqg2l1khlcgpkbm31m0hnhz";
       "https://github.com/input-output-hk/cardano-crypto.git"."07397f0e50da97eaa0575d93bee7ac4b2b2576ec" = "06sdx5ndn2g722jhpicmg96vsrys89fl81k8290b3lr6b1b0w4m3";
       "https://github.com/input-output-hk/cardano-prelude"."fd773f7a58412131512b9f694ab95653ac430852" = "02jddik1yw0222wd6q0vv10f7y8rdgrlqaiy83ph002f9kjx7mh6";
       "https://github.com/input-output-hk/Win32-network"."3825d3abf75f83f406c1f7161883c438dac7277d" = "19wahfv726fa3mqajpqdqhnl9ica3xmf68i254q45iyjcpj1psqx";
@@ -80,6 +80,9 @@ let
         tests: False
       package network
         tests: False
+      package clock
+        tests: False
+        benchmarks: False
 
       allow-newer:
              stm:base
@@ -94,17 +97,12 @@ let
            , snap-core:attoparsec
            , websockets:attoparsec
            , jsaddle:base64-bytestring
-
-      source-repository-package
-        type: git
-        location: https://github.com/hamishmack/foundation
-        tag: 421e8056fabf30ef2f5b01bb61c6880d0dfaa1c8
-        --sha256: 0cbsj3dyycykh0lcnsglrzzh898n2iydyw8f2nwyfvfnyx6ac2im
-        subdir: foundation
     '' + lib.optionalString (topLevelPkgs.stdenv.hostPlatform.isGhcjs && !pkgs.stdenv.hostPlatform.isGhcjs) ''
       packages:
         ${topLevelPkgs.buildPackages.haskell-nix.compiler.${compiler-nix-name}.project.configured-src}
         contrib/double-conversion-2.0.2.0
+        contrib/lzma-0.0.0.3
+        contrib/cardano-crypto-07397f
 
       allow-newer: ghcjs:base16-bytestring
                  , ghcjs:aeson
@@ -243,6 +241,20 @@ let
               )
             else __trace "nativePlutus is null" [ ];
 
+          plutus-tx-plugin.components.tests.plutus-tx-tests.ghcOptions =
+            if (ghcjsPluginPkgs != null && pkgs.stdenv.hostPlatform.isGhcjs)
+            then
+              (
+                let attr = ghcjsPluginPkgs.haskell.projectPackages.plutus-tx-plugin.components.library;
+                in
+                [
+                  "-host-package-db ${attr.passthru.configFiles}/${attr.passthru.configFiles.packageCfgDir}"
+                  "-host-package-db ${attr}/package.conf.d"
+                  "-Werror"
+                ]
+              )
+            else __trace "nativePlutus is null" [ ];
+
           Cabal.patches = [ ../../patches/cabal.patch ];
 
           # Packages we just don't want docs for
@@ -315,17 +327,49 @@ let
         packages.double-conversion.components.library.libs = lib.mkForce [ ];
       })
       ({ pkgs, ... }: lib.mkIf (pkgs.stdenv.hostPlatform.isGhcjs) {
-        packages = {
-          lzma.components.library.libs = lib.mkForce [ pkgs.buildPackages.lzma ];
-          cardano-crypto-praos.components.library.pkgconfig = lib.mkForce [ [ pkgs.buildPackages.libsodium-vrf ] ];
-          cardano-crypto-class.components.library.pkgconfig = lib.mkForce [ [ pkgs.buildPackages.libsodium-vrf ] ];
-          plutus-core.ghcOptions = [ "-Wno-unused-packages" ];
-          iohk-monitoring.ghcOptions = [ "-Wno-deprecations" ]; # TODO find alternative fo libyaml
-        };
-      })
-      ({ pkgs, config, ... }@args: {
-        packages.cardano-addresses-jsbits.components.library.preConfigure =
-          (import (args.config.packages.cardano-addresses.src + "/jsbits/emscripten") args).packages.cardano-addresses-jsbits.components.library.preConfigure;
+        packages =
+          let
+            runEmscripten = ''
+              patchShebangs jsbits/emscripten/build.sh
+              (cd jsbits/emscripten && PATH=${
+                  # The extra buildPackages here is for closurecompiler.
+                  # Without it we get `unknown emulation for platform: js-unknown-ghcjs` errors.
+                  lib.makeBinPath (with pkgs.buildPackages.buildPackages;
+                    [ emscripten closurecompiler coreutils python2 ])
+                }:$PATH ./build.sh)
+            '';
+            libsodium-vrf = pkgs.libsodium-vrf.overrideAttrs (attrs: {
+              nativeBuildInputs = attrs.nativeBuildInputs or [ ] ++ (with pkgs.buildPackages.buildPackages; [ emscripten python2 ]);
+              prePatch = ''
+                export HOME=$(mktemp -d)
+                export PYTHON=${pkgs.buildPackages.buildPackages.python2}/bin/python
+              '' + attrs.prePatch or "";
+              configurePhase = ''
+                emconfigure ./configure --prefix=$out --enable-minimal --disable-shared --without-pthreads --disable-ssp --disable-asm --disable-pie CFLAGS=-Os
+              '';
+              CC = "emcc";
+            });
+          in
+          {
+            cardano-wallet-core.components.library.build-tools = [ pkgs.buildPackages.buildPackages.gitReallyMinimal ];
+            lzma.components.library.libs = lib.mkForce [ pkgs.buildPackages.lzma ];
+            cardano-crypto-praos.components.library.pkgconfig = lib.mkForce [ [ libsodium-vrf ] ];
+            cardano-crypto-class.components.library.pkgconfig = lib.mkForce [ [ libsodium-vrf ] ];
+            cardano-crypto-class.components.library.build-tools = with pkgs.buildPackages.buildPackages; [ emscripten python2 ];
+            cardano-crypto-class.components.library.preConfigure = ''
+              ls -l
+              emcc $(js-unknown-ghcjs-pkg-config --libs --cflags libsodium) jsbits/libsodium.c -o jsbits/libsodium.js -s WASM=0 \
+                -s "EXTRA_EXPORTED_RUNTIME_METHODS=['printErr']" \
+                -s "EXPORTED_FUNCTIONS=['_malloc', '_free', '_crypto_generichash_blake2b', '_crypto_generichash_blake2b_final', '_crypto_generichash_blake2b_init', '_crypto_generichash_blake2b_update', '_crypto_hash_sha256', '_crypto_hash_sha256_final', '_crypto_hash_sha256_init', '_crypto_hash_sha256_update', '_crypto_sign_ed25519_detached', '_crypto_sign_ed25519_seed_keypair', '_crypto_sign_ed25519_sk_to_pk', '_crypto_sign_ed25519_sk_to_seed', '_crypto_sign_ed25519_verify_detached', '_sodium_compare', '_sodium_free', '_sodium_init', '_sodium_malloc', '_sodium_memzero']"
+            '';
+            plutus-core.ghcOptions = [ "-Wno-unused-packages" ];
+            iohk-monitoring.ghcOptions = [ "-Wno-deprecations" ]; # TODO find alternative fo libyaml
+            plutus-pab.components.tests.psgenerator.buildable = false;
+            cryptonite.components.library.preConfigure = runEmscripten;
+            cardano-crypto.components.library.preConfigure = runEmscripten;
+            direct-sqlite.components.library.preConfigure = runEmscripten;
+            ghcjs-c-interop.components.library.preConfigure = runEmscripten;
+          };
       })
     ] ++ lib.optional enableHaskellProfiling {
       enableLibraryProfiling = true;
