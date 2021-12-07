@@ -128,10 +128,10 @@ unDeBruijnTyM = \case
     -- variable case
     TyVar ann n -> TyVar ann <$> deBruijnToTyName n
     -- binder cases
-    TyForall ann tn k ty -> declareIndex tn $ do
+    TyForall ann tn k ty -> declareBinder $ do
         tn' <- deBruijnToTyName tn
         withScope $ TyForall ann tn' k <$> unDeBruijnTyM ty
-    TyLam ann tn k ty -> declareIndex tn $ do
+    TyLam ann tn k ty -> declareBinder $ do
         tn' <- deBruijnToTyName tn
         withScope $ TyLam ann tn' k <$> unDeBruijnTyM ty
     -- boring recursive cases
@@ -149,10 +149,10 @@ unDeBruijnTermM = \case
     -- variable case
     Var ann n -> Var ann <$> deBruijnToName n
     -- binder cases
-    TyAbs ann tn k t -> declareIndex tn $ do
+    TyAbs ann tn k t -> declareBinder $ do
         tn' <- deBruijnToTyName tn
         withScope $ TyAbs ann tn' k <$> unDeBruijnTermM t
-    LamAbs ann n ty t -> declareIndex n $ do
+    LamAbs ann n ty t -> declareBinder $ do
         n' <- deBruijnToName n
         withScope $ LamAbs ann n' <$> unDeBruijnTyM ty <*> unDeBruijnTermM t
     -- boring recursive cases

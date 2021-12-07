@@ -84,7 +84,7 @@ unDeBruijnTermM = \case
     -- variable case
     Var ann n -> Var ann <$> deBruijnToName n
     -- binder cases
-    LamAbs ann n t -> declareIndex n $ do
+    LamAbs ann n t -> declareBinder $ do
         n' <- deBruijnToName n
         withScope $ LamAbs ann n' <$> unDeBruijnTermM t
     -- boring recursive cases

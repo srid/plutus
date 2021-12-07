@@ -18,7 +18,7 @@ module PlutusCore.DeBruijn.Internal
     , ixToLevel
     , levelToIndex
     , declareUnique
-    , declareIndex
+    , declareBinder
     , withScope
     , getIndex
     , getUnique
@@ -150,11 +150,14 @@ declareUnique :: (MonadReader Levels m, HasUnique name unique) => name -> m a ->
 declareUnique n =
     local $ \(Levels current ls) -> Levels current $ BM.insert (n ^. theUnique) current ls
 
--- | Declare a name with an index, recording the mapping from the corresponding 'Level' to a fresh unique.
-declareIndex :: (MonadReader Levels m, MonadQuote m, HasIndex name) => name -> m a -> m a
-declareIndex n act = do
+{-| Declares a new binder (lamabs, tyabs, tyforall, tylam ) by assigning a fresh unique to the *current level*
+Note that it ignores the actual index at the binder's location, and just uses the current level for indexing.
+This is to avoid malformed input to influence the debruijnification.
+-}
+declareBinder :: (MonadReader Levels m, MonadQuote m) => m a -> m a
+declareBinder act = do
     newU <- freshUnique
-    local (\(Levels current ls) -> Levels current $ BM.insert newU (ixToLevel current (n ^. index)) ls) act
+    local (\(Levels current ls) -> Levels current $ BM.insert newU current ls) act
 
 -- | Enter a scope, incrementing the current 'Level' by one
 withScope :: MonadReader Levels m => m a -> m a
