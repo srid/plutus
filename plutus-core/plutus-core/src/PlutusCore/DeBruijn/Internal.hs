@@ -15,8 +15,6 @@ module PlutusCore.DeBruijn.Internal
     , AsFreeVariableError (..)
     , Level (..)
     , Levels (..)
-    , ixToLevel
-    , levelToIndex
     , declareUnique
     , declareBinder
     , withScope
@@ -54,7 +52,7 @@ import GHC.Generics
 -- | A relative index used for de Bruijn identifiers.
 newtype Index = Index Natural
     deriving stock Generic
-    deriving newtype (Show, Num, Eq, Ord, Pretty)
+    deriving newtype (Show, Num, Enum, Real, Integral, Eq, Ord, Pretty)
     deriving anyclass NFData
 
 -- | A term name as a de Bruijn index.
@@ -134,16 +132,10 @@ We use a newtype to keep these separate, since getting it wrong will lead to ann
 -}
 
 -- | An absolute level in the program.
-newtype Level = Level Index deriving newtype (Eq, Ord, Num)
+-- Note: we only store positive levels in the Bimap, but a Level can
+-- momentarily become negative during `ixToLevel` calculation, hence the type Integer.
+newtype Level = Level Integer deriving newtype (Eq, Ord, Num)
 data Levels = Levels Level (BM.Bimap Unique Level)
-
--- | Compute the absolute 'Level' of a relative 'Index' relative to the current 'Level'.
-ixToLevel :: Level -> Index -> Level
-ixToLevel (Level current) ix = Level (current - ix)
-
--- | Compute the relative 'Index' of a absolute 'Level' relative to the current 'Level'.
-levelToIndex :: Level -> Level -> Index
-levelToIndex (Level current) (Level l) = current - l
 
 -- | Declare a name with a unique, recording the mapping to a 'Level'.
 declareUnique :: (MonadReader Levels m, HasUnique name unique) => name -> m a -> m a
@@ -152,7 +144,7 @@ declareUnique n =
 
 {-| Declares a new binder (lamabs, tyabs, tyforall, tylam ) by assigning a fresh unique to the *current level*
 Note that it ignores the actual index at the binder's location, and just uses the current level for indexing.
-This is to avoid malformed input to influence the debruijnification.
+This is to avoid malformed input to influence the debruijnification, leading to scope errors or arithmetic underflow exceptions.
 -}
 declareBinder :: (MonadReader Levels m, MonadQuote m) => m a -> m a
 declareBinder act = do
@@ -186,8 +178,17 @@ getIndex :: (MonadReader Levels m, AsFreeVariableError e, MonadError e m) => Uni
 getIndex u = do
     Levels current ls <- ask
     case BM.lookup u ls of
-        Just ix -> pure $ levelToIndex current ix
+        Just ix -> pure $ levelToIx current ix
         Nothing -> throwing _FreeVariableError $ FreeUnique u
+  where
+    -- Compute the relative 'Index' of a absolute 'Level' relative to the current 'Level'.
+    -- `current` and `l` are influenced only by the spine of the AST,
+    -- and not by the specific indices of the binders (see `declaredBinder`).
+    -- Thus it is guaranteed that 'current >= l'.
+    levelToIx :: Level -> Level -> Index
+    levelToIx (Level current) (Level l) =
+        -- no arithmetic underflow here, because 'current >= l'
+        fromIntegral $ current - l
 
 -- | Get the 'Unique' corresponding to a given 'Index'.
 getUnique :: (MonadReader Levels m, AsFreeVariableError e, MonadError e m) => Index -> m Unique
@@ -196,6 +197,13 @@ getUnique ix = do
     case BM.lookupR (ixToLevel current ix) ls of
         Just u  -> pure u
         Nothing -> throwing _FreeVariableError $ FreeIndex ix
+  where
+    -- Compute the absolute 'Level' of a relative 'Index' relative to the current 'Level'.
+    -- The index `ixAST` comes from the input AST, which means it can be malformed or point to a free variable.
+    -- Thus the function's result Level may become negative.
+    ixToLevel :: Level -> Index -> Level
+    ixToLevel (Level current) ixAST = Level (current - fromIntegral ixAST)
+
 
 unNameDeBruijn
     :: NamedDeBruijn -> DeBruijn
