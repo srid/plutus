@@ -1,0 +1,12 @@
+(Right (program
+  0.1.0
+  (lam
+    b_i0
+    (all A_i0 (type) (fun A_i1 (fun A_i1 A_i1)))
+    (abs
+      T_i0
+      (type)
+      (lam x_i0 T_i2 (lam y_i0 T_i3 [ [ { b_i4 T_i3 } y_i1 ] x_i2 ]))
+    )
+  )
+))

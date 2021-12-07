@@ -1,0 +1,8 @@
+(Right (program
+  0.1.0
+  (lam
+    x_i0
+    (con integer)
+    (lam y_i0 (con integer) [ [ (builtin addInteger) x_i2 ] y_i1 ])
+  )
+))

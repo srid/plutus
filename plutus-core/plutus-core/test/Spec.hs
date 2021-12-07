@@ -36,6 +36,7 @@ import Flat qualified
 import Hedgehog hiding (Var)
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import System.FilePath
 import Test.Tasty
 import Test.Tasty.Golden
 import Test.Tasty.HUnit
@@ -44,10 +45,11 @@ import Test.Tasty.Hedgehog
 main :: IO ()
 main = do
     plcFiles <- findByExtension [".plc"] "plutus-core/test/data"
+    dbFiles <- findByExtension [".plc"] "plutus-core/test/debruijn"
     rwFiles <- findByExtension [".plc"] "plutus-core/test/scopes"
     typeFiles <- findByExtension [".plc"] "plutus-core/test/types"
     typeErrorFiles <- findByExtension [".plc"] "plutus-core/test/type-errors"
-    defaultMain (allTests plcFiles rwFiles typeFiles typeErrorFiles)
+    defaultMain (allTests plcFiles dbFiles rwFiles typeFiles typeErrorFiles)
 
 compareName :: Name -> Name -> Bool
 compareName = (==) `on` nameString
@@ -198,6 +200,19 @@ testsGolden
     = testGroup "golden tests"
     . fmap (asGolden (format $ defPrettyConfigPlcClassic defPrettyConfigPlcOptions))
 
+testsDeBruijn :: [FilePath] -> TestTree
+testsDeBruijn
+    = testGroup "debruijn golden tests"
+    . fmap (\ fp -> goldenVsString (takeBaseName fp) (fp <.> "golden") $ deBruijnFP fp)
+   where
+     deBruijnFP fp = do
+         bs <- BSL.readFile fp
+         let res = runExcept $ runQuoteT $ do
+                 p <- void <$> parseProgram @(DefaultError AlexPosn) bs
+                 deBruijnProgram p
+         pure $ BSL.fromStrict . encodeUtf8  $ render $ prettyPlcClassicDebug res
+
+
 testsRewrite :: [FilePath] -> TestTree
 testsRewrite
     = testGroup "golden rewrite tests"
@@ -214,8 +229,8 @@ tests = testCase "example programs" $ fold
         fmt = format cfg
         cfg = defPrettyConfigPlcClassic defPrettyConfigPlcOptions
 
-allTests :: [FilePath] -> [FilePath] -> [FilePath] -> [FilePath] -> TestTree
-allTests plcFiles rwFiles typeFiles typeErrorFiles =
+allTests :: [FilePath] -> [FilePath] -> [FilePath] -> [FilePath] -> [FilePath] -> TestTree
+allTests plcFiles dbFiles rwFiles typeFiles typeErrorFiles =
   testGroup "all tests"
     [ tests
     , testCase "lexing constants from small types" testLexConstant
@@ -223,6 +238,7 @@ allTests plcFiles rwFiles typeFiles typeErrorFiles =
     , testProperty "parser round-trip" propParser
     , testProperty "serialization round-trip (Flat)" propFlat
     , testsGolden plcFiles
+    , testsDeBruijn dbFiles
     , testsRewrite rwFiles
     , testsType typeFiles
     , testsType typeErrorFiles
