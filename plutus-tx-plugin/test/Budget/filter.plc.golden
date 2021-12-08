@@ -107,28 +107,19 @@
                   (lam
                     l
                     [ List a ]
-                    {
-                      [
-                        [
-                          { [ { Nil_match a } l ] (all dead (type) b) }
-                          (abs dead (type) acc)
-                        ]
-                        (lam
-                          x
-                          a
-                          (lam
-                            xs
-                            [ List a ]
-                            (abs
-                              dead
-                              (type)
-                              [ [ f x ] [ [ [ { { foldr a } b } f ] acc ] xs ] ]
-                            )
-                          )
+                    [
+                      [ { [ { Nil_match a } l ] b } (lam p (prod ) acc) ]
+                      (lam
+                        p
+                        (prod a [ List a ])
+                        (let
+                          (nonrec)
+                          (termbind (strict) (vardecl x a) (proj 0 p))
+                          (termbind (strict) (vardecl xs [ List a ]) (proj 1 p))
+                          [ [ f x ] [ [ [ { { foldr a } b } f ] acc ] xs ] ]
                         )
-                      ]
-                      (all dead (type) dead)
-                    }
+                      )
+                    ]
                   )
                 )
               )
@@ -158,19 +149,13 @@
                       (lam
                         xs
                         [ List a ]
-                        {
+                        [
                           [
-                            [
-                              {
-                                [ Bool_match [ p e ] ]
-                                (all dead (type) [ List a ])
-                              }
-                              (abs dead (type) [ [ { Cons a } e ] xs ])
-                            ]
-                            (abs dead (type) xs)
+                            { [ Bool_match [ p e ] ] [ List a ] }
+                            (lam p (prod ) [ [ { Cons a } e ] xs ])
                           ]
-                          (all dead (type) dead)
-                        }
+                          (lam p (prod ) xs)
+                        ]
                       )
                     )
                   ]
