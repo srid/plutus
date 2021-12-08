@@ -304,21 +304,23 @@ instance uni ~ DefaultUni => ToBuiltinMeaning uni DefaultFun where
           consPlc
             (SomeConstant (Some (ValueOf uniA x)))
             (SomeConstantPoly (Some (ValueOf uniListA xs))) = do
-                DefaultUniList uniA' <- pure uniListA
+                DefaultUniList uniA' <- pure (traceShowId uniListA)
                 -- Checking that the type of the constant is the same as the type of the elements
                 -- of the unlifted list. Note that there's no way we could enforce this statically
                 -- since in UPLC one can create an ill-typed program that attempts to prepend
                 -- a value of the wrong type to a list.
                 -- Should that rather give us an 'UnliftingError'? For that we need
                 -- https://github.com/input-output-hk/plutus/pull/3035
-                Just Refl <- pure $ uniA `geq` uniA'
+                Just Refl <- pure $ traceShowId uniA `geq` traceShowId uniA'
                 pure . fromConstant . someValueOf uniListA $ x : xs
     toBuiltinMeaning HeadList =
         makeBuiltinMeaning
             headPlc
             (runCostingFunOneArgument . paramHeadList)
         where
-          headPlc :: SomeConstantPoly uni [] '[a] -> EvaluationResult (Opaque term a)
+          headPlc
+            :: SomeConstantPoly uni [] '[a]
+            -> EvaluationResult (Opaque term a)
           headPlc (SomeConstantPoly (Some (ValueOf uniListA xs))) = do
               DefaultUniList uniA <- pure uniListA
               x : _ <- pure xs
